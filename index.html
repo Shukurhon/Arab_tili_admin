@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Arab Tili — Admin Panel</title>
+
+  <!-- Firebase compat SDK (module emas, klassik usul) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f1f5f9;color:#1e293b;min-height:100vh}
+    #login-page{display:flex;align-items:center;justify-content:center;min-height:100vh}
+    .login-card{background:white;border-radius:20px;padding:48px 40px;box-shadow:0 20px 60px rgba(0,0,0,.1);text-align:center;width:360px}
+    .logo{font-size:56px;margin-bottom:16px}
+    .login-card h1{font-size:24px;font-weight:700;margin-bottom:6px}
+    .login-card p{color:#64748b;font-size:14px;margin-bottom:32px}
+    .btn-google{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;padding:14px;border:1.5px solid #e2e8f0;border-radius:12px;background:white;cursor:pointer;font-size:15px;font-weight:600;transition:all .2s}
+    .btn-google:hover{background:#f8fafc;border-color:#1a6b3c}
+    .btn-google img{width:20px}
+    .err{color:#dc2626;font-size:13px;margin-top:12px;display:none;padding:10px;background:#fee2e2;border-radius:8px}
+
+    #app{display:none;min-height:100vh}
+    .sidebar{position:fixed;left:0;top:0;bottom:0;width:240px;background:#0f172a;padding:24px 0;z-index:10}
+    .brand{padding:0 20px 24px;border-bottom:1px solid #1e293b}
+    .brand h2{color:white;font-size:16px;font-weight:700}
+    .brand p{color:#64748b;font-size:12px;margin-top:2px}
+    nav{padding:16px 12px}
+    .nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;color:#94a3b8;font-size:14px;font-weight:500;cursor:pointer;margin-bottom:4px;transition:all .15s}
+    .nav-item:hover{background:#1e293b;color:white}
+    .nav-item.active{background:#1a6b3c;color:white}
+    .main{margin-left:240px;padding:28px}
+    .page{display:none}.page.active{display:block}
+    .page-title{font-size:24px;font-weight:700;margin-bottom:24px}
+
+    .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:28px}
+    .stat-card{background:white;border-radius:16px;padding:20px 24px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+    .stat-card .lbl{font-size:13px;color:#64748b;margin-bottom:6px}
+    .stat-card .val{font-size:32px;font-weight:800;color:#1a6b3c}
+    .stat-card .sub{font-size:12px;color:#94a3b8;margin-top:2px}
+
+    .card{background:white;border-radius:16px;padding:24px;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:24px}
+    .card h3{font-size:16px;font-weight:700;margin-bottom:16px}
+    table{width:100%;border-collapse:collapse}
+    th{text-align:left;font-size:12px;font-weight:600;color:#64748b;padding:10px 12px;background:#f8fafc}
+    td{padding:12px;border-bottom:1px solid #f1f5f9;font-size:14px;vertical-align:middle}
+    tr:last-child td{border-bottom:none}
+    .avatar{width:34px;height:34px;border-radius:50%;object-fit:cover;background:#e2e8f0;vertical-align:middle;margin-right:8px}
+    .badge{display:inline-block;padding:3px 8px;border-radius:6px;font-size:11px;font-weight:600}
+    .badge-green{background:#dcfce7;color:#16a34a}
+    .badge-blue{background:#dbeafe;color:#2563eb}
+
+    .form-group{margin-bottom:16px}
+    label{display:block;font-size:13px;font-weight:600;margin-bottom:6px;color:#374151}
+    input,textarea{width:100%;padding:10px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;outline:none;font-family:inherit}
+    input:focus,textarea:focus{border-color:#1a6b3c}
+    textarea{resize:vertical;min-height:90px}
+    .btn-primary{background:#1a6b3c;color:white;border:none;padding:12px 28px;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer}
+    .btn-primary:hover{background:#0f4a2a}
+    .btn-primary:disabled{background:#94a3b8;cursor:not-allowed}
+    .success-msg{background:#dcfce7;color:#16a34a;padding:10px 14px;border-radius:10px;font-size:13px;margin-top:12px;display:none}
+
+    .notif-item{display:flex;align-items:flex-start;gap:14px;padding:14px 0;border-bottom:1px solid #f1f5f9}
+    .notif-item:last-child{border-bottom:none}
+    .notif-icon{width:38px;height:38px;border-radius:10px;background:#dcfce7;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+    .notif-body h4{font-size:14px;font-weight:600}
+    .notif-body p{font-size:13px;color:#64748b;margin-top:2px}
+    .notif-body .time{font-size:11px;color:#94a3b8;margin-top:4px}
+    .btn-del{background:#fee2e2;color:#dc2626;border:none;padding:5px 10px;border-radius:6px;font-size:12px;cursor:pointer;margin-left:auto;flex-shrink:0;font-weight:600}
+
+    .loading{text-align:center;color:#94a3b8;padding:40px;font-size:14px}
+    .signout-wrap{position:fixed;bottom:20px;left:12px;right:12px;width:216px}
+    .btn-signout{width:100%;padding:10px;border-radius:10px;background:#1e293b;color:#94a3b8;border:none;cursor:pointer;font-size:13px;font-weight:600}
+    .btn-signout:hover{background:#334155;color:white}
+    .btn-lessons{background:#e0f2fe;color:#0284c7;border:none;padding:5px 10px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600}
+    .btn-lessons:hover{background:#bae6fd}
+    .btn-points{background:#fef9c3;color:#ca8a04;border:none;padding:5px 10px;border-radius:6px;font-size:12px;cursor:pointer;font-weight:600}
+    .btn-points:hover{background:#fde68a}
+    .actions-cell{display:flex;gap:6px;flex-wrap:wrap}
+    .search-wrap{position:relative;max-width:340px;margin-bottom:16px}
+    .search-wrap input{padding-left:36px}
+    .search-wrap .s-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:14px;color:#94a3b8}
+    .search-count{font-size:12px;color:#94a3b8;margin-bottom:10px}
+
+    /* Modal */
+    .chart-wrap{position:relative;height:300px;margin-top:8px}
+    .period-tabs{display:flex;gap:8px;margin-bottom:20px}
+    .period-tab{padding:7px 18px;border-radius:8px;border:1.5px solid #e2e8f0;background:white;font-size:13px;font-weight:600;cursor:pointer;color:#64748b;transition:all .15s}
+    .period-tab.active{background:#1a6b3c;color:white;border-color:#1a6b3c}
+    .analytics-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:24px}
+    .a-card{background:white;border-radius:14px;padding:18px 20px;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+    .a-card .lbl{font-size:12px;color:#64748b;margin-bottom:4px}
+    .a-card .val{font-size:28px;font-weight:800;color:#1a6b3c}
+    .a-card .sub{font-size:11px;color:#94a3b8;margin-top:2px}
+
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;display:flex;align-items:center;justify-content:center}
+    .modal{background:white;border-radius:20px;padding:28px;width:540px;max-width:95vw;max-height:85vh;display:flex;flex-direction:column}
+    .modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+    .modal-header h3{font-size:18px;font-weight:700}
+    .modal-close{background:none;border:none;font-size:22px;cursor:pointer;color:#64748b;line-height:1}
+    .modal-body{overflow-y:auto;flex:1}
+    .lessons-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px}
+    .lesson-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;border:1.5px solid #e2e8f0;cursor:pointer;transition:all .15s;user-select:none}
+    .lesson-row:hover{border-color:#1a6b3c;background:#f0fdf4}
+    .lesson-row.unlocked{border-color:#1a6b3c;background:#f0fdf4}
+    .lesson-row.completed{border-color:#94a3b8;background:#f8fafc;opacity:.7;cursor:default}
+    .lesson-num{width:28px;height:28px;border-radius:8px;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
+    .lesson-row.unlocked .lesson-num{background:#dcfce7;color:#16a34a}
+    .lesson-row.completed .lesson-num{background:#dbeafe;color:#2563eb}
+    .lesson-name{font-size:13px;font-weight:500;flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+    .lesson-tag{font-size:10px;font-weight:700;padding:2px 6px;border-radius:4px;flex-shrink:0}
+    .tag-done{background:#dbeafe;color:#2563eb}
+    .tag-open{background:#dcfce7;color:#16a34a}
+    .tag-lock{background:#f1f5f9;color:#94a3b8}
+    .modal-footer{margin-top:16px;display:flex;gap:10px;justify-content:flex-end}
+  </style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-page">
+  <div class="login-card">
+    <div class="logo">🕌</div>
+    <h1>Arab Tili Admin</h1>
+    <p>Admin hisobingiz bilan kiring</p>
+    <button class="btn-google" id="btnLogin">
+      <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="G">
+      Google bilan kirish
+    </button>
+    <div class="err" id="loginErr"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="sidebar">
+    <div class="brand">
+      <h2>🕌 Arab Tili</h2>
+      <p id="adminEmail">Admin</p>
+    </div>
+    <nav>
+      <div class="nav-item active" data-page="dashboard">📊 Dashboard</div>
+      <div class="nav-item" data-page="analytics">📈 Analitika</div>
+      <div class="nav-item" data-page="users">👥 Foydalanuvchilar</div>
+      <div class="nav-item" data-page="notifications">🔔 Xabarlar</div>
+    </nav>
+    <div class="signout-wrap">
+      <button class="btn-signout" id="btnSignout">⬅ Chiqish</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <!-- Dashboard -->
+    <div id="page-dashboard" class="page active">
+      <div class="page-title">📊 Dashboard</div>
+      <div class="stats-grid">
+        <div class="stat-card"><div class="lbl">👥 Foydalanuvchilar</div><div class="val" id="sTotal">—</div><div class="sub">Ro'yhatdan o'tganlar</div></div>
+        <div class="stat-card"><div class="lbl">📚 Bajarilgan darslar</div><div class="val" id="sLessons">—</div><div class="sub">Jami barcha userlar</div></div>
+        <div class="stat-card"><div class="lbl">⭐ O'rtacha ball</div><div class="val" id="sAvg">—</div><div class="sub">Foydalanuvchi boshiga</div></div>
+        <div class="stat-card"><div class="lbl">🔔 Xabarlar</div><div class="val" id="sNotifs">—</div><div class="sub">Yuborilgan</div></div>
+      </div>
+      <div class="card">
+        <h3>🏆 Top foydalanuvchilar</h3>
+        <div id="topLoading" class="loading">Yuklanmoqda...</div>
+        <table id="topTable" style="display:none">
+          <thead><tr><th>#</th><th>Foydalanuvchi</th><th>Ball</th><th>Darslar</th><th>Streak</th></tr></thead>
+          <tbody id="topBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Analytics -->
+    <div id="page-analytics" class="page">
+      <div class="page-title">📈 Kunlik Analitika</div>
+      <div class="analytics-grid">
+        <div class="a-card"><div class="lbl">📅 Bugun faol</div><div class="val" id="aToday">—</div><div class="sub">foydalanuvchi</div></div>
+        <div class="a-card"><div class="lbl">📅 Kecha faol</div><div class="val" id="aYesterday">—</div><div class="sub">foydalanuvchi</div></div>
+        <div class="a-card"><div class="lbl">📅 7 kun o'rtacha</div><div class="val" id="aAvg7">—</div><div class="sub">foydalanuvchi/kun</div></div>
+        <div class="a-card"><div class="lbl">📅 Eng faol kun</div><div class="val" id="aPeak">—</div><div class="sub" id="aPeakDate">—</div></div>
+      </div>
+
+      <div class="card">
+        <h3>Kunlik faol foydalanuvchilar</h3>
+        <div class="period-tabs">
+          <button class="period-tab active" data-days="7">7 kun</button>
+          <button class="period-tab" data-days="14">14 kun</button>
+          <button class="period-tab" data-days="30">30 kun</button>
+        </div>
+        <div class="chart-wrap"><canvas id="dailyChart"></canvas></div>
+      </div>
+
+      <div class="card">
+        <h3>Kun bo'yicha jadval</h3>
+        <table>
+          <thead><tr><th>Sana</th><th>Faol foydalanuvchilar</th><th>Ko'rsatkich</th></tr></thead>
+          <tbody id="analyticsBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Users -->
+    <div id="page-users" class="page">
+      <div class="page-title">👥 Foydalanuvchilar</div>
+      <div class="card">
+        <h3>Barcha foydalanuvchilar <button class="btn-primary" id="btnRefresh" style="padding:6px 14px;font-size:13px;margin-left:12px">🔄 Yangilash</button></h3>
+        <div class="search-wrap">
+          <span class="s-icon">🔍</span>
+          <input id="userSearch" type="text" placeholder="Email yoki ism bo'yicha qidirish..." oninput="filterUsers()"/>
+        </div>
+        <div class="search-count" id="userSearchCount"></div>
+        <div id="usersLoading" class="loading">Yuklanmoqda...</div>
+        <table id="usersTable" style="display:none">
+          <thead><tr><th>Foydalanuvchi</th><th>Email</th><th>Ball</th><th>Darslar</th><th>Streak</th><th>Faollik</th><th>Amallar</th></tr></thead>
+          <tbody id="usersBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Notifications -->
+    <div id="page-notifications" class="page">
+      <div class="page-title">🔔 Xabarlar</div>
+      <div class="card">
+        <h3>Yangi xabar yuborish</h3>
+        <div class="form-group"><label>Sarlavha *</label><input id="nTitle" type="text" placeholder="Masalan: Yangi darslar qo'shildi!" maxlength="100"/></div>
+        <div class="form-group"><label>Matn *</label><textarea id="nBody" placeholder="Xabar matni..." maxlength="500"></textarea></div>
+        <div class="form-group"><label>Havola (ixtiyoriy)</label><input id="nUrl" type="text" placeholder="https://..."/></div>
+        <button class="btn-primary" id="btnSend">📤 Xabar yuborish</button>
+        <div class="success-msg" id="sendOk">✅ Xabar muvaffaqiyatli yuborildi!</div>
+      </div>
+      <div class="card">
+        <h3>Yuborilgan xabarlar</h3>
+        <div id="notifsLoading" class="loading">Yuklanmoqda...</div>
+        <div id="notifsList"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Darslar modali -->
+<div class="modal-overlay" id="lessonsModal" style="display:none">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modalTitle">📚 Darslarni boshqarish</h3>
+      <button class="modal-close" id="modalClose">✕</button>
+    </div>
+    <div style="font-size:12px;color:#64748b;margin-bottom:12px">
+      Yashil — admin ochgan &nbsp;|&nbsp; Ko'k — o'tilgan &nbsp;|&nbsp; Kulrang — qulflangan.<br>
+      Bosib ochish/yopish mumkin (o'tilgan darslar o'zgartirilmaydi).
+    </div>
+    <div class="modal-body">
+      <div class="lessons-grid" id="lessonsGrid"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-primary" id="btnSaveLessons">💾 Saqlash</button>
+      <button style="background:#f1f5f9;color:#374151;border:none;padding:10px 20px;border-radius:10px;font-weight:600;cursor:pointer" id="btnCancelLessons">Bekor qilish</button>
+    </div>
+  </div>
+</div>
+
+<!-- Ball qo'shish modali -->
+<div class="modal-overlay" id="pointsModal" style="display:none">
+  <div class="modal" style="width:380px">
+    <div class="modal-header">
+      <h3 id="pointsModalTitle">⭐ Ball qo'shish</h3>
+      <button class="modal-close" id="pointsModalClose">✕</button>
+    </div>
+    <div style="font-size:12px;color:#64748b;margin-bottom:12px">
+      Musbat son — ball qo'shadi, manfiy son — ball ayiradi.
+    </div>
+    <div class="form-group">
+      <label>Qancha ball qo'shilsin?</label>
+      <input id="pointsInput" type="number" placeholder="Masalan: 100" value="100"/>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-primary" id="btnSavePoints">💾 Qo'shish</button>
+      <button style="background:#f1f5f9;color:#374151;border:none;padding:10px 20px;border-radius:10px;font-weight:600;cursor:pointer" id="btnCancelPoints">Bekor qilish</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ── Firebase config ───────────────────────────────────────────────────────
+  const firebaseConfig = {
+    apiKey: "AIzaSyBq4VJuJlcExlTIv7b-MvS_5coEEK7Fq3k",
+    authDomain: "arab-tili-aceb8.firebaseapp.com",
+    projectId: "arab-tili-aceb8",
+    storageBucket: "arab-tili-aceb8.firebasestorage.app",
+    messagingSenderId: "1073927723724",
+    appId: "1:1073927723724:web:5bc108ba77cc46fa1ac069",
+  };
+  const ADMIN_EMAILS = ['zeroup.uz@gmail.com', 'skukurrespekt@gmail.com'];
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+  firebase.initializeApp(firebaseConfig);
+  const auth = firebase.auth();
+  const db   = firebase.firestore();
+
+  // ── Auth state ────────────────────────────────────────────────────────────
+  auth.onAuthStateChanged(user => {
+    if (user && ADMIN_EMAILS.includes(user.email)) {
+      document.getElementById('login-page').style.display = 'none';
+      document.getElementById('app').style.display = 'block';
+      document.getElementById('adminEmail').textContent = user.email;
+      loadDashboard();
+      loadNotifications();
+    } else if (user) {
+      auth.signOut();
+      showErr('Bu email admin emas!');
+    } else {
+      document.getElementById('login-page').style.display = 'flex';
+      document.getElementById('app').style.display = 'none';
+    }
+  });
+
+  // ── Login ─────────────────────────────────────────────────────────────────
+  document.getElementById('btnLogin').onclick = function() {
+    const btn = this;
+    btn.textContent = 'Kirilmoqda...';
+    btn.disabled = true;
+    const provider = new firebase.auth.GoogleAuthProvider();
+    auth.signInWithPopup(provider).catch(function(e) {
+      showErr('Xato [' + e.code + ']: ' + e.message);
+      btn.innerHTML = '<img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" style="width:20px"> Google bilan kirish';
+      btn.disabled = false;
+    });
+  };
+
+  document.getElementById('btnSignout').onclick = function() { auth.signOut(); };
+
+  function showErr(msg) {
+    const el = document.getElementById('loginErr');
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+
+  // ── Navigation ────────────────────────────────────────────────────────────
+  document.querySelectorAll('.nav-item[data-page]').forEach(function(el) {
+    el.addEventListener('click', function() {
+      document.querySelectorAll('.page').forEach(function(p){ p.classList.remove('active'); });
+      document.querySelectorAll('.nav-item').forEach(function(n){ n.classList.remove('active'); });
+      document.getElementById('page-' + el.dataset.page).classList.add('active');
+      el.classList.add('active');
+      if (el.dataset.page === 'users') loadUsers();
+      if (el.dataset.page === 'analytics') loadAnalytics();
+    });
+  });
+
+  // ── Dashboard ─────────────────────────────────────────────────────────────
+  function loadDashboard() {
+    db.collection('users').get().then(function(usersSnap) {
+      db.collection('notifications').get().then(function(nSnap) {
+        var totalLessons = 0, totalScore = 0, top = [];
+        usersSnap.forEach(function(d) {
+          var data = d.data();
+          var lessons = (data.completedLessons || []).length;
+          totalLessons += lessons;
+          totalScore += (data.score || 0);
+          top.push({ name: data.name || 'Foydalanuvchi', score: data.score || 0,
+                     lessons: lessons, streak: data.streak || 0, photo: data.photoUrl || '' });
+        });
+        document.getElementById('sTotal').textContent = usersSnap.size;
+        document.getElementById('sLessons').textContent = totalLessons;
+        document.getElementById('sNotifs').textContent = nSnap.size;
+        document.getElementById('sAvg').textContent = usersSnap.size > 0
+          ? Math.round(totalScore / usersSnap.size) : 0;
+
+        top.sort(function(a,b){ return b.score - a.score; });
+        document.getElementById('topBody').innerHTML = top.slice(0,10).map(function(u,i){
+          return '<tr><td><b>'+(i+1)+'</b></td><td>'
+            + (u.photo ? '<img class="avatar" src="'+u.photo+'" onerror="this.style.display=\'none\'">' : '')
+            + esc(u.name) + '</td>'
+            + '<td><span class="badge badge-blue">'+u.score+'</span></td>'
+            + '<td>'+u.lessons+'</td><td>🔥 '+u.streak+'</td></tr>';
+        }).join('');
+        document.getElementById('topLoading').style.display = 'none';
+        document.getElementById('topTable').style.display = 'table';
+      });
+    });
+  }
+
+  // ── Users ─────────────────────────────────────────────────────────────────
+  var _allUsersData = [];
+
+  function loadUsers() {
+    document.getElementById('usersLoading').style.display = 'block';
+    document.getElementById('usersTable').style.display = 'none';
+    db.collection('users').orderBy('score','desc').get().then(function(snap) {
+      _allUsersData = snap.docs.map(function(d) { return { id: d.id, data: d.data() }; });
+      document.getElementById('userSearch').value = '';
+      renderUsersTable(_allUsersData);
+      document.getElementById('usersLoading').style.display = 'none';
+      document.getElementById('usersTable').style.display = 'table';
+    });
+  }
+  document.getElementById('btnRefresh').onclick = loadUsers;
+
+  function renderUsersTable(list) {
+    document.getElementById('usersBody').innerHTML = list.map(function(item) {
+      var data = item.data;
+      var name = data.name || 'Foydalanuvchi';
+      var nameJs = esc(name).replace(/'/g, "\\'");
+      var lessons = (data.completedLessons || []).length;
+      var adminUnlocked = (data.adminUnlockedLessons || []).length;
+      return '<tr>'
+        + '<td>' + (data.photoUrl ? '<img class="avatar" src="'+data.photoUrl+'" onerror="this.style.display=\'none\'">' : '')
+        + '<b>'+esc(name)+'</b></td>'
+        + '<td style="color:#64748b">'+esc(data.email||'')+'</td>'
+        + '<td><span class="badge badge-blue">'+(data.score||0)+'</span></td>'
+        + '<td><span class="badge badge-green">'+lessons+' dars</span>'
+        + (adminUnlocked > 0 ? ' <span class="badge" style="background:#fef9c3;color:#ca8a04">+'+adminUnlocked+' ochilgan</span>' : '')
+        + '</td>'
+        + '<td>🔥 '+(data.streak||0)+'</td>'
+        + '<td style="color:#94a3b8">'+(data.lastActiveDate||'—')+'</td>'
+        + '<td class="actions-cell">'
+        + '<button class="btn-lessons" onclick="openLessonsModal(\''+item.id+'\',\''+nameJs+'\')">📚 Darslar</button>'
+        + '<button class="btn-points" onclick="openPointsModal(\''+item.id+'\',\''+nameJs+'\')">⭐ Ball</button>'
+        + '</td>'
+        + '</tr>';
+    }).join('');
+  }
+
+  function filterUsers() {
+    var q = document.getElementById('userSearch').value.trim().toLowerCase();
+    var filtered = !q ? _allUsersData : _allUsersData.filter(function(item) {
+      var email = (item.data.email || '').toLowerCase();
+      var name = (item.data.name || '').toLowerCase();
+      return email.indexOf(q) !== -1 || name.indexOf(q) !== -1;
+    });
+    renderUsersTable(filtered);
+    var countEl = document.getElementById('userSearchCount');
+    countEl.textContent = q ? ('Topildi: ' + filtered.length + ' / ' + _allUsersData.length) : '';
+  }
+
+  // ── Lessons Modal ──────────────────────────────────────────────────────────
+  var LESSON_NAMES = [
+    // 1-BOB: Alifbo va Asoslar (1-10)
+    'Alifbo 1','Alifbo 2','Alifbo 3','Salomlashish','Raqamlar','Oila',
+    'Ranglar','Hayvonlar','Meva va sabzavotlar','Kundalik iboralar',
+    // 2-BOB: Kundalik Hayot (11-20)
+    'Vaqt','Yo\'llar','Savdo','Ovqatlar','Din iboralari',
+    'Hafta kunlari','Oylar','Fasllar','Vaqt iboralari','Katta raqamlar',
+    // 3-BOB: Vaqt va Tabiat (21-30)
+    'Tanishuv','Uy','Mebel','Kiyimlar','Oshxona buyumlari',
+    'Tana a\'zolari','Salomatlik','Mevalar','Sabzavotlar','Ichimliklar',
+    // 4-BOB: Uy va Tana (31-40)
+    'Maktab','Kasblar','Texnologiya','Xarid qilish','Transport',
+    'Yo\'nalishlar','Tabiat','Ob-havo','Hayvonlar 2','Sifatlar 1',
+    // 5-BOB: Taom va Kasblar (41-50)
+    'Sifatlar 2','Fe\'llar 1','Fe\'llar 2','Islamiy iboralar 1','Islamiy iboralar 2',
+    'Suhbat iboralari','Savol so\'zlari','Ranglar 2','Ofis','Dunyoning mamlakatlari',
+    // 6-BOB: Sayohat va Muloqot (51-60)
+    'Sayohat iboralari','Mehmonxona','Restoran','Shifoxona','Kutubxona',
+    'Sport','Xayriya va yordam','Tabiatda sayohat','Dengiz atamalar','Hayvonot bog\'i',
+    // 7-BOB: Ish va Jamiyat (61-70)
+    'Ish muhiti','Jamiyat va huquq','Bank va moliya','Pochta va xizmatlar','Masjid iboralari',
+    'Muhabbat va do\'stlik','Bayramlar','Ijtimoiy tarmoqlar','Musiqa','Kino va teatr',
+    // 8-BOB: Sifat va Harakatlar (71-80)
+    'Zidma-zid so\'zlar 1','Zidma-zid so\'zlar 2','Bog\'lovchi so\'zlar','Ravishlar','Olmoshlar 1',
+    'Ko\'rsatish olmoshlari','Egalik olmoshlari','Sonlar takrorlash','Vaqt iboralari 2','Matematika',
+    // 9-BOB: Din va Madaniyat (81-90)
+    'Namoz iboralari','Qur\'on atamalar','Islom tarixi','Arab mamlakatlari','Arab oshxonasi',
+    'Arab madaniyati','Arab maqollari','Arabcha xatlar','Arab sheherlari','Tarixiy shaxslar',
+    // 10-BOB: Mamlakat va Hayot (91-100)
+    'Geografiya','Siyosat','Iqtisod','Ilm-fan','Texnologiya 2',
+    'Atrof-muhit','Sport 2','San\'at','Adabiyot','Falsafa',
+    // 11-BOB: Ilm va Kelajak (101-110)
+    'Fe\'llar 3','Maktab fanlari','Osmondagilar','Qishloq xo\'jaligi','Maqollar',
+    'Iqlim','Oila 2','Texnologiya 3','Vaziyatlar','Yakuniy dars 1',
+    // 12-BOB: Savdo va Raqamlar (111-120)
+    'Raqamlar 11-20','Bozorda suhbat','Harflar shakllari','Muammo va yechim','Internet',
+    'Sharq shaharlari','Mehr-muhabbat','Harakatlar','Rang va tavsif','Muhim savollar',
+    // 13-BOB: Zamonaviy Hayot (121-130)
+    'Olmoshlar 2','Tartib sonlar','Kasblar 2','Tabiiy ofatlar','Qo\'shimcha sabzavotlar',
+    'O\'rmon va tabiat','Uy ishlari','Hissiyotlar 2','Daryo va dengiz','Aql va bilim',
+    // 14-BOB: Yuqori Daraja (131-140)
+    'Orzular va maqsadlar','Tana a\'zolari 2','Musiqa va san\'at','Davlat va jamiyat','Iqtisod va tijorat',
+    'Sport 3','Qur\'on va Hadis','Telefonda muloqot','Tarix va sivilizatsiya','Ilg\'or so\'zlashuv'
+  ];
+
+  var _modalUserId = null;
+  var _modalCompleted = [];
+  var _modalAdminUnlocked = [];
+
+  function openLessonsModal(uid, name) {
+    _modalUserId = uid;
+    document.getElementById('modalTitle').textContent = '📚 ' + name + ' — darslar';
+    document.getElementById('lessonsModal').style.display = 'flex';
+
+    db.collection('users').doc(uid).get().then(function(doc) {
+      var data = doc.data() || {};
+      _modalCompleted = data.completedLessons || [];
+      _modalAdminUnlocked = (data.adminUnlockedLessons || []).slice();
+      renderLessonsGrid();
+    });
+  }
+
+  function renderLessonsGrid() {
+    var html = '';
+    for (var i = 0; i < LESSON_NAMES.length; i++) {
+      var id = i + 1;
+      var isDone = _modalCompleted.indexOf(id) !== -1;
+      var isAdminOpen = _modalAdminUnlocked.indexOf(id) !== -1;
+      var cls = isDone ? 'lesson-row completed' : (isAdminOpen ? 'lesson-row unlocked' : 'lesson-row');
+      var tag = isDone
+        ? '<span class="lesson-tag tag-done">O\'tilgan</span>'
+        : (isAdminOpen
+          ? '<span class="lesson-tag tag-open">Ochiq</span>'
+          : '<span class="lesson-tag tag-lock">Qulflangan</span>');
+      var onclick = isDone ? '' : ' onclick="toggleLesson('+id+')"';
+      html += '<div class="'+cls+'"'+onclick+'>'
+        + '<div class="lesson-num">'+id+'</div>'
+        + '<div class="lesson-name">'+esc(LESSON_NAMES[i] || ('Dars '+id))+'</div>'
+        + tag
+        + '</div>';
+    }
+    document.getElementById('lessonsGrid').innerHTML = html;
+  }
+
+  function toggleLesson(id) {
+    var idx = _modalAdminUnlocked.indexOf(id);
+    if (idx === -1) {
+      _modalAdminUnlocked.push(id);
+    } else {
+      _modalAdminUnlocked.splice(idx, 1);
+    }
+    renderLessonsGrid();
+  }
+
+  document.getElementById('btnSaveLessons').onclick = function() {
+    if (!_modalUserId) return;
+    var btn = this;
+    btn.disabled = true;
+    btn.textContent = 'Saqlanmoqda...';
+    db.collection('users').doc(_modalUserId).update({
+      adminUnlockedLessons: _modalAdminUnlocked
+    }).then(function() {
+      btn.textContent = '✅ Saqlandi!';
+      setTimeout(function() {
+        document.getElementById('lessonsModal').style.display = 'none';
+        btn.disabled = false;
+        btn.textContent = '💾 Saqlash';
+        loadUsers();
+      }, 800);
+    }).catch(function(e) {
+      alert('Xato: ' + e.message);
+      btn.disabled = false;
+      btn.textContent = '💾 Saqlash';
+    });
+  };
+
+  function closeLessonsModal() {
+    document.getElementById('lessonsModal').style.display = 'none';
+    _modalUserId = null;
+  }
+  document.getElementById('modalClose').onclick = closeLessonsModal;
+  document.getElementById('btnCancelLessons').onclick = closeLessonsModal;
+  document.getElementById('lessonsModal').onclick = function(e) {
+    if (e.target === this) closeLessonsModal();
+  };
+
+  // ── Points Modal (Ball qo'shish) ───────────────────────────────────────────
+  var _pointsUserId = null;
+
+  function openPointsModal(uid, name) {
+    _pointsUserId = uid;
+    document.getElementById('pointsModalTitle').textContent = '⭐ ' + name + ' — ball qo\'shish';
+    document.getElementById('pointsInput').value = 100;
+    document.getElementById('pointsModal').style.display = 'flex';
+  }
+
+  function closePointsModal() {
+    document.getElementById('pointsModal').style.display = 'none';
+    _pointsUserId = null;
+  }
+  document.getElementById('pointsModalClose').onclick = closePointsModal;
+  document.getElementById('btnCancelPoints').onclick = closePointsModal;
+  document.getElementById('pointsModal').onclick = function(e) {
+    if (e.target === this) closePointsModal();
+  };
+
+  document.getElementById('btnSavePoints').onclick = function() {
+    if (!_pointsUserId) return;
+    var amount = parseInt(document.getElementById('pointsInput').value, 10);
+    if (!amount) { alert("Iltimos, ball sonini kiriting (0 dan farqli)!"); return; }
+    var btn = this;
+    btn.disabled = true;
+    btn.textContent = 'Saqlanmoqda...';
+    db.collection('users').doc(_pointsUserId).update({
+      score: firebase.firestore.FieldValue.increment(amount)
+    }).then(function() {
+      btn.textContent = '✅ Qo\'shildi!';
+      setTimeout(function() {
+        closePointsModal();
+        btn.disabled = false;
+        btn.textContent = '💾 Qo\'shish';
+        loadUsers();
+      }, 700);
+    }).catch(function(e) {
+      alert('Xato: ' + e.message);
+      btn.disabled = false;
+      btn.textContent = '💾 Qo\'shish';
+    });
+  };
+
+  // ── Notifications ─────────────────────────────────────────────────────────
+  function loadNotifications() {
+    db.collection('notifications').orderBy('createdAt','desc').limit(50)
+      .onSnapshot(function(snap) {
+        document.getElementById('notifsLoading').style.display = 'none';
+        var list = document.getElementById('notifsList');
+        if (snap.empty) { list.innerHTML = '<div class="loading">Hozircha xabar yo\'q</div>'; return; }
+        list.innerHTML = snap.docs.map(function(d) {
+          var data = d.data();
+          var ts = data.createdAt ? data.createdAt.toDate() : null;
+          var time = ts ? ts.toLocaleString('uz') : '';
+          return '<div class="notif-item">'
+            + '<div class="notif-icon">🔔</div>'
+            + '<div class="notif-body"><h4>'+esc(data.title||'')+'</h4>'
+            + '<p>'+esc(data.body||'')+'</p>'
+            + (data.url ? '<p style="color:#1a6b3c">🔗 '+esc(data.url)+'</p>' : '')
+            + '<div class="time">'+time+'</div></div>'
+            + '<button class="btn-del" data-id="'+d.id+'">O\'chirish</button>'
+            + '</div>';
+        }).join('');
+        list.querySelectorAll('.btn-del').forEach(function(btn) {
+          btn.onclick = function() {
+            if (!confirm('O\'chirishni tasdiqlaysizmi?')) return;
+            db.collection('notifications').doc(btn.dataset.id).delete();
+          };
+        });
+      });
+  }
+
+  // ── Send notification ─────────────────────────────────────────────────────
+  document.getElementById('btnSend').onclick = function() {
+    var title = document.getElementById('nTitle').value.trim();
+    var body  = document.getElementById('nBody').value.trim();
+    var url   = document.getElementById('nUrl').value.trim();
+    if (!title || !body) { alert('Sarlavha va matn majburiy!'); return; }
+    var btn = this;
+    btn.disabled = true; btn.textContent = 'Yuborilmoqda...';
+    db.collection('notifications').add({
+      title: title, body: body, url: url,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      sentBy: auth.currentUser ? auth.currentUser.email : 'admin'
+    }).then(function() {
+      document.getElementById('nTitle').value = '';
+      document.getElementById('nBody').value = '';
+      document.getElementById('nUrl').value = '';
+      var ok = document.getElementById('sendOk');
+      ok.style.display = 'block';
+      setTimeout(function(){ ok.style.display='none'; }, 3000);
+    }).catch(function(e){ alert('Xato: ' + e.message); });
+    btn.disabled = false; btn.textContent = '📤 Xabar yuborish';
+  };
+
+  // ── Analytics ─────────────────────────────────────────────────────────────
+  var _dailyChart = null;
+  var _analyticsData = {}; // { 'YYYY-MM-DD': count }
+
+  function loadAnalytics() {
+    db.collection('users').get().then(function(snap) {
+      var counts = {};
+      snap.forEach(function(d) {
+        var date = (d.data().lastActiveDate || '').trim();
+        if (date) counts[date] = (counts[date] || 0) + 1;
+      });
+      _analyticsData = counts;
+
+      // Summary cards
+      var today = fmtDate(new Date());
+      var yest  = fmtDate(new Date(Date.now() - 86400000));
+      document.getElementById('aToday').textContent     = counts[today] || 0;
+      document.getElementById('aYesterday').textContent = counts[yest]  || 0;
+
+      // 7-kun o'rtacha
+      var sum7 = 0;
+      for (var i = 0; i < 7; i++) {
+        var d = fmtDate(new Date(Date.now() - i * 86400000));
+        sum7 += counts[d] || 0;
+      }
+      document.getElementById('aAvg7').textContent = Math.round(sum7 / 7);
+
+      // Eng ko'p faol kun
+      var peakVal = 0, peakDate = '—';
+      Object.keys(counts).forEach(function(k) {
+        if (counts[k] > peakVal) { peakVal = counts[k]; peakDate = k; }
+      });
+      document.getElementById('aPeak').textContent     = peakVal || '—';
+      document.getElementById('aPeakDate').textContent = peakDate;
+
+      renderChart(7);
+    });
+  }
+
+  function renderChart(days) {
+    var labels = [], data = [];
+    for (var i = days - 1; i >= 0; i--) {
+      var d = fmtDate(new Date(Date.now() - i * 86400000));
+      labels.push(d.slice(5)); // MM-DD
+      data.push(_analyticsData[d] || 0);
+    }
+
+    // Jadval
+    var maxVal = Math.max.apply(null, data) || 1;
+    document.getElementById('analyticsBody').innerHTML = labels.map(function(lbl, i) {
+      var pct = Math.round((data[i] / maxVal) * 100);
+      return '<tr>'
+        + '<td><b>' + labels[i] + '</b></td>'
+        + '<td><b style="color:#1a6b3c">' + data[i] + '</b> kishi</td>'
+        + '<td style="min-width:160px">'
+        + '<div style="background:#e2e8f0;border-radius:6px;height:10px;overflow:hidden">'
+        + '<div style="background:#1a6b3c;width:' + pct + '%;height:100%;border-radius:6px;transition:width .4s"></div>'
+        + '</div></td>'
+        + '</tr>';
+    }).join('');
+
+    // Chart
+    if (_dailyChart) _dailyChart.destroy();
+    _dailyChart = new Chart(document.getElementById('dailyChart'), {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          label: 'Faol foydalanuvchilar',
+          data: data,
+          backgroundColor: 'rgba(26,107,60,0.75)',
+          borderColor: '#1a6b3c',
+          borderWidth: 2,
+          borderRadius: 8,
+          borderSkipped: false,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: function(ctx) { return ctx.parsed.y + ' kishi'; }
+            }
+          }
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            ticks: { stepSize: 1, precision: 0 },
+            grid: { color: 'rgba(0,0,0,.05)' }
+          },
+          x: { grid: { display: false } }
+        }
+      }
+    });
+  }
+
+  // Period tabs
+  document.querySelectorAll('.period-tab').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.period-tab').forEach(function(b){ b.classList.remove('active'); });
+      btn.classList.add('active');
+      renderChart(parseInt(btn.dataset.days));
+    });
+  });
+
+  function fmtDate(d) {
+    var y = d.getFullYear();
+    var m = String(d.getMonth()+1).padStart(2,'0');
+    var day = String(d.getDate()).padStart(2,'0');
+    return y + '-' + m + '-' + day;
+  }
+
+  // ── Helper ────────────────────────────────────────────────────────────────
+  function esc(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+</script>
+</body>
+</html>
